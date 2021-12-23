@@ -15,7 +15,10 @@ defmodule ILI9486 do
     :rotation,
     :mad_mode,
     :data_bus,
-    :display_mode
+    :display_mode,
+    :frame_rate,
+    :diva,
+    :rtna
   ]
 
   @doc """
@@ -103,6 +106,9 @@ defmodule ILI9486 do
     mad_mode = opts[:mad_mode] || :right_down
     data_bus = opts[:data_bus] || :parallel_8bit
     display_mode = opts[:display_mode] || :normal
+    frame_rate = opts[:frame_rate] || 70
+    diva = opts[:diva] || 0b00
+    rtna = opts[:rtna] || 0b10001
 
     # supported data connection
     # only 8-bit parallel MCU interface for now
@@ -142,7 +148,10 @@ defmodule ILI9486 do
       rotation: rotation,
       mad_mode: mad_mode,
       data_bus: data_bus,
-      display_mode: display_mode
+      display_mode: display_mode,
+      frame_rate: frame_rate,
+      diva: diva,
+      rtna: rtna
     }
     |> ILI9486.reset()
     |> init()
@@ -253,6 +262,53 @@ defmodule ILI9486 do
   def set_display_mode(self = %ILI9486{}, display_mode = :idle) do
     %ILI9486{self | display_mode: display_mode}
     |> command(self, kIDLEON())
+  end
+
+  @doc """
+  Set frame rate
+
+  - **self**: `%ILI9486{}`
+  - **frame_rate**: Valid value should be one of the following
+    - 28
+    - 30
+    - 32
+    - 34
+    - 36
+    - 39
+    - 42
+    - 46
+    - 50
+    - 56
+    - 62
+    - 70
+    - 81
+    - 96
+    - 117
+
+  **return**: `self`
+  """
+  @doc functions: :exported
+  def set_frame_rate(
+        self = %ILI9486{display_mode: display_mode, diva: diva, rtna: rtna},
+        frame_rate
+      ) do
+    index = Enum.find_index(valid_frame_rates(display_mode), fn valid -> valid == frame_rate end)
+
+    if index == nil do
+      {:error, "invalid frame rate"}
+    else
+      p1 =
+        index
+        |> bsl(4)
+        |> bor(diva)
+
+      self
+      |> command(kFRMCTR1(), cmd_data: [p1, rtna])
+    end
+  end
+
+  defp valid_frame_rates(:normal) do
+    [28, 30, 32, 34, 36, 39, 42, 46, 50, 56, 62, 70, 81, 96, 117, 117]
   end
 
   @doc """
