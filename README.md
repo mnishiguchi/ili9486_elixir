@@ -1,6 +1,8 @@
-# Ili9486Elixir
+# ILI9486-Elixir
 
-**TODO: Add description**
+ST7789 driver for Elixir.
+
+Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
 
 ## Installation
 
