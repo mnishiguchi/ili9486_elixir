@@ -5,7 +5,7 @@ defmodule ILI9486 do
 
   use Bitwise
 
-  @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus, :display_mode]
+  @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus, :display_mode, :chunk_size]
   defstruct [
     :gpio,
     :opts,
@@ -18,7 +18,8 @@ defmodule ILI9486 do
     :display_mode,
     :frame_rate,
     :diva,
-    :rtna
+    :rtna,
+    :chunk_size
   ]
 
   @doc """
@@ -114,6 +115,14 @@ defmodule ILI9486 do
     Default value: `0b10001`. Valid value starts from `0b10000` (16 clocks) to `0b11111` (31 clocks), i.e.,
     clocks increases by 1 as `rtna` increasing by 1.
 
+  - **is_high_speed**: Is the high speed variant?
+
+    Default value: `false`. Set `true` to make it compatible with the high speed variant. (125MHz SPI).
+
+  - **chunk_size**: batch transfer size.
+
+    Default value: `4096` for the lo-speed variant. `0x8000` for the hi-speed variant.
+
   **return**: `%ILI9486{}`
 
   ## Example
@@ -125,6 +134,16 @@ defmodule ILI9486 do
   # SPI speed: 16MHz
   # Pixel Format: BGR565
   disp = ILI9486.new()
+  ```
+
+  high-speed variant (125MHz SPI)
+  ```elixir
+  # assuming LCD device at /dev/spidev0.0
+  # DC connects to PIN 24
+  # RST connects to PIN 25 (for demo only, not necessary)
+  # SPI speed: 125MHz
+  # Pixel Format: BGR666 (for demo only, not necessary)
+  disp = ILI9486.new(speed_hz: 125_000_000, pix_fmt: :bgr666, rst: 25)
   ```
   """
   @doc functions: :exported
@@ -147,6 +166,11 @@ defmodule ILI9486 do
     frame_rate = opts[:frame_rate] || 70
     diva = opts[:diva] || 0b00
     rtna = opts[:rtna] || 0b10001
+    is_high_speed = opts[:is_high_speed] || false
+    chunk_size = opts[:chunk_size]
+    chunk_size = if chunk_size == nil do
+      if is_high_speed, do: 0x8000, else: 4096
+    end
 
     # supported data connection
     # only 8-bit parallel MCU interface for now
@@ -189,10 +213,11 @@ defmodule ILI9486 do
       display_mode: display_mode,
       frame_rate: frame_rate,
       diva: diva,
-      rtna: rtna
+      rtna: rtna,
+      chunk_size: chunk_size
     }
     |> ILI9486.reset()
-    |> init()
+    |> init(is_high_speed)
   end
 
   @doc """
@@ -368,7 +393,7 @@ defmodule ILI9486 do
   def display_565(self, image_data) when is_list(image_data) do
     self
     |> set_window(x0: 0, y0: 0, x1: nil, y2: nil)
-    |> send(image_data, true, 4096)
+    |> send(image_data, true)
   end
 
   @doc """
@@ -388,7 +413,7 @@ defmodule ILI9486 do
   def display_666(self, image_data) when is_list(image_data) do
     self
     |> set_window(x0: 0, y0: 0, x1: nil, y2: nil)
-    |> send(image_data, true, 0x8000)
+    |> send(image_data, true)
   end
 
   @doc """
@@ -480,27 +505,25 @@ defmodule ILI9486 do
     - `true`: `bytes` will be sent as data
     - `false`: `bytes` will be sent as commands
 
-  - **chunk_size**: Indicates how many bytes will be send in a single write call
-
   **return**: `self`
   """
   @doc functions: :exported
-  def send(self, bytes, is_data, chunk_size \\ 0x8000)
+  def send(self, bytes, is_data)
 
-  def send(self = %ILI9486{}, bytes, true, chunk_size) do
-    send(self, bytes, 1, chunk_size)
+  def send(self = %ILI9486{}, bytes, true) do
+    send(self, bytes, 1)
   end
 
-  def send(self = %ILI9486{}, bytes, false, chunk_size) do
-    send(self, bytes, 0, chunk_size)
+  def send(self = %ILI9486{}, bytes, false) do
+    send(self, bytes, 0)
   end
 
-  def send(self = %ILI9486{}, bytes, is_data, chunk_size)
+  def send(self = %ILI9486{}, bytes, is_data)
       when (is_data == 0 or is_data == 1) and is_integer(bytes) do
-    send(self, [Bitwise.band(bytes, 0xFF)], is_data, chunk_size)
+    send(self, [Bitwise.band(bytes, 0xFF)], is_data)
   end
 
-  def send(self = %ILI9486{gpio: gpio, lcd_spi: spi}, bytes, is_data, chunk_size)
+  def send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size}, bytes, is_data)
       when (is_data == 0 or is_data == 1) and is_list(bytes) do
     gpio_dc = gpio[:dc]
 
@@ -635,10 +658,44 @@ defmodule ILI9486 do
     |> bor(kMAD_Y_UP())
   end
 
-  defp init(self = %ILI9486{frame_rate: frame_rate}) do
-    self
+  defp init(self = %ILI9486{frame_rate: frame_rate}, is_high_speed) do
     # software reset
-    |> command(kSWRESET(), delay: 120)
+    command(self, kSWRESET(), delay: 120)
+    if is_high_speed do
+      self
+      |> command(kHISPEEDF1())
+      |> data(0x36)
+      |> data(0x04)
+      |> data(0x00)
+      |> data(0x3C)
+      |> data(0x0F)
+      |> data(0x8F)
+      |> command(kHISPEEDF2())
+      |> data(0x18)
+      |> data(0xA3)
+      |> data(0x12)
+      |> data(0x02)
+      |> data(0xB2)
+      |> data(0x12)
+      |> data(0xFF)
+      |> data(0x10)
+      |> data(0x00)
+      |> command(kHISPEEDF8())
+      |> data(0x21)
+      |> data(0x04)
+      |> command(kHISPEEDF9())
+      |> data(0x00)
+      |> data(0x08)
+      |> command(kPWCTR2())
+      |> data(0x41)
+      |> command(kVMCTR1())
+      |> data(0x00)
+      |> data(0x91)
+      |> data(0x80)
+      |> data(0x00)
+    else
+      self
+    end
     # RGB mode off
     |> command(kRGB_INTERFACE(), cmd_data: 0x00)
     # turn off sleep mode
@@ -879,4 +936,13 @@ defmodule ILI9486 do
   def kMAD_Y_UP, do: 0x80
   @doc functions: :constants
   def kMAD_Y_DOWN, do: 0x00
+
+  @doc functions: :constants
+  def kHISPEEDF1, do: 0xF1
+  @doc functions: :constants
+  def kHISPEEDF2, do: 0xF2
+  @doc functions: :constants
+  def kHISPEEDF8, do: 0xF8
+  @doc functions: :constants
+  def kHISPEEDF9, do: 0xF9
 end
