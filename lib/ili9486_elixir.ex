@@ -5,8 +5,8 @@ defmodule ILI9486 do
 
   use Bitwise
 
-  @enforce_keys [:gpio, :opts, :lcd_spi]
-  defstruct [:gpio, :opts, :lcd_spi, :touch_spi, :pix_fmt, :rotation, :mad_mode]
+  @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus]
+  defstruct [:gpio, :opts, :lcd_spi, :touch_spi, :pix_fmt, :rotation, :mad_mode, :data_bus]
 
   @doc """
   New connection to an ILI9486
@@ -51,7 +51,7 @@ defmodule ILI9486 do
 
     Default value: `16_000_000`.
 
-  - **pix_fmt**: either `:bgr565` or `:rgb565`
+  - **pix_fmt**: either `:bgr565`, `:rgb565`, `:bgr666` or `:rgb666`
 
     Default value: `:bgr565`.
 
@@ -91,6 +91,13 @@ defmodule ILI9486 do
     pix_fmt = opts[:pix_fmt] || :bgr565
     rotation = opts[:rotation] || 90
     mad_mode = opts[:mad_mode] || :right_down
+    data_bus = opts[:data_bus] || :parallel_8bit
+
+    # supported data connection
+    # only 8-bit parallel MCU interface for now
+    # - 65K colors
+    # - 262K colors
+    :parallel_8bit = data_bus
 
     {:ok, lcd_spi} = init_spi(port, lcd_cs, speed_hz)
     {:ok, touch_spi} = init_spi(port, touch_cs, speed_hz)
@@ -122,7 +129,8 @@ defmodule ILI9486 do
       ],
       pix_fmt: pix_fmt,
       rotation: rotation,
-      mad_mode: mad_mode
+      mad_mode: mad_mode,
+      data_bus: data_bus
     }
     |> ILI9486.reset()
     |> init()
@@ -232,6 +240,26 @@ defmodule ILI9486 do
   end
 
   @doc """
+  Write the provided 18bit BGR666/RGB666 image to the hardware.
+
+  - **self**: `%ILI9486{}`
+  - **image_data**: Should be 18bit BGR666/RGB666 format (same channel order as in `self`) and
+    the same dimensions (width x height x 3) as the display hardware.
+
+  **return**: `self`
+  """
+  @doc functions: :exported
+  def display_666(self, image_data) when is_binary(image_data) do
+    display_666(self, :binary.bin_to_list(image_data))
+  end
+
+  def display_666(self, image_data) when is_list(image_data) do
+    self
+    |> set_window(x0: 0, y0: 0, x1: nil, y2: nil)
+    |> send(image_data, true, 4096)
+  end
+
+  @doc """
   Write the provided 24bit BGR888/RGB888 image to the hardware.
 
   - **self**: `%ILI9486{}`
@@ -242,8 +270,15 @@ defmodule ILI9486 do
   """
   @doc functions: :exported
   def display(self = %ILI9486{pix_fmt: target_color}, image_data, source_color)
-      when is_binary(image_data) and (source_color == :rgb888 or source_color == :bgr888) do
+      when is_binary(image_data) and (source_color == :rgb888 or source_color == :bgr888) and
+             (target_color == :rgb565 or target_color == :bgr565) do
     display_565(self, to_565(image_data, source_color, target_color))
+  end
+
+  def display(self = %ILI9486{pix_fmt: target_color}, image_data, source_color)
+      when is_binary(image_data) and (source_color == :rgb888 or source_color == :bgr888) and
+             (target_color == :rgb666 or target_color == :bgr666) do
+    display_666(self, :binary.bin_to_list(image_data))
   end
 
   def display(self, image_data, source_color)
@@ -370,19 +405,26 @@ defmodule ILI9486 do
 
   defp init_reset(_), do: nil
 
-  defp _get_pix_fmt(%ILI9486{pix_fmt: :rgb565}), do: kMAD_RGB()
-  defp _get_pix_fmt(%ILI9486{pix_fmt: :bgr565}), do: kMAD_BGR()
+  defp _get_channel_order(%ILI9486{pix_fmt: :rgb565}), do: kMAD_RGB()
+  defp _get_channel_order(%ILI9486{pix_fmt: :bgr565}), do: kMAD_BGR()
+  defp _get_channel_order(%ILI9486{pix_fmt: :rgb666}), do: kMAD_RGB()
+  defp _get_channel_order(%ILI9486{pix_fmt: :bgr666}), do: kMAD_BGR()
+
+  defp _get_pix_fmt(%ILI9486{pix_fmt: :rgb565}), do: k16BIT_PIX()
+  defp _get_pix_fmt(%ILI9486{pix_fmt: :bgr565}), do: k16BIT_PIX()
+  defp _get_pix_fmt(%ILI9486{pix_fmt: :rgb666}), do: k18BIT_PIX()
+  defp _get_pix_fmt(%ILI9486{pix_fmt: :bgr666}), do: k18BIT_PIX()
 
   defp _mad_mode(self = %ILI9486{rotation: 0, mad_mode: :right_down}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_DOWN())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 90, mad_mode: :right_down}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_DOWN())
     |> bor(kMAD_VERTICAL())
@@ -390,14 +432,14 @@ defmodule ILI9486 do
 
   defp _mad_mode(self = %ILI9486{rotation: 180, mad_mode: :right_down}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_UP())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 270, mad_mode: :right_down}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_UP())
     |> bor(kMAD_VERTICAL())
@@ -405,14 +447,14 @@ defmodule ILI9486 do
 
   defp _mad_mode(self = %ILI9486{rotation: 0, mad_mode: :right_up}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_UP())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 90, mad_mode: :right_up}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_DOWN())
     |> bor(kMAD_VERTICAL())
@@ -420,14 +462,14 @@ defmodule ILI9486 do
 
   defp _mad_mode(self = %ILI9486{rotation: 180, mad_mode: :right_up}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_DOWN())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 270, mad_mode: :right_up}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_UP())
     |> bor(kMAD_VERTICAL())
@@ -435,28 +477,28 @@ defmodule ILI9486 do
 
   defp _mad_mode(self = %ILI9486{rotation: 0, mad_mode: :rgb_mode}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_DOWN())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 90, mad_mode: :rgb_mode}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_DOWN())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 180, mad_mode: :rgb_mode}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_RIGHT())
     |> bor(kMAD_Y_UP())
   end
 
   defp _mad_mode(self = %ILI9486{rotation: 270, mad_mode: :rgb_mode}) do
     self
-    |> _get_pix_fmt()
+    |> _get_channel_order()
     |> bor(kMAD_X_LEFT())
     |> bor(kMAD_Y_UP())
   end
@@ -464,13 +506,13 @@ defmodule ILI9486 do
   defp init(self = %ILI9486{}) do
     self
     # software reset
-    |> command(kSWRESET(), delay: 100)
+    |> command(kSWRESET(), delay: 120)
     # RGB mode off
     |> command(kRGB_INTERFACE(), cmd_data: 0x00)
     # turn off sleep mode
-    |> command(kSLPOUT(), delay: 500)
+    |> command(kSLPOUT(), delay: 200)
     # interface format
-    |> command(kPIXFMT(), cmd_data: 0x55)
+    |> command(kPIXFMT(), cmd_data: _get_pix_fmt(self))
     |> command(kMADCTL(), cmd_data: _mad_mode(self))
     |> command(kPWCTR3(), cmd_data: 0x44)
     |> command(kVMCTR1(), cmd_data: [0x00, 0x00, 0x00, 0x00])
@@ -535,6 +577,7 @@ defmodule ILI9486 do
     |> command(kINVOFF())
     |> command(kSLPOUT(), delay: 200)
     |> command(kDISPON())
+    |> command(kIDLEOFF())
   end
 
   defp set_window(self = %ILI9486{opts: board}, opts = [x0: 0, y0: 0, x1: nil, y2: nil]) do
@@ -633,6 +676,10 @@ defmodule ILI9486 do
   # Vertical Scrolling Start Address
   def kVSCRSADD, do: 0x37
   @doc functions: :constants
+  def kIDLEOFF, do: 0x38
+  @doc functions: :constants
+  def kIDLEON, do: 0x39
+  @doc functions: :constants
   # COLMOD: Pixel Format Set
   def kPIXFMT, do: 0x3A
 
@@ -687,6 +734,10 @@ defmodule ILI9486 do
   def kMAD_RGB, do: 0x08
   @doc functions: :constants
   def kMAD_BGR, do: 0x00
+  @doc functions: :constants
+  def k18BIT_PIX, do: 0x66
+  @doc functions: :constants
+  def k16BIT_PIX, do: 0x55
 
   @doc functions: :constants
   def kMAD_VERTICAL, do: 0x20
