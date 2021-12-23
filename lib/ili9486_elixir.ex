@@ -143,7 +143,7 @@ defmodule ILI9486 do
   # RST connects to PIN 25 (for demo only, not necessary)
   # SPI speed: 125MHz
   # Pixel Format: BGR666 (for demo only, not necessary)
-  disp = ILI9486.new(speed_hz: 125_000_000, pix_fmt: :bgr666, rst: 25)
+  disp = ILI9486.new(is_high_speed: true, speed_hz: 125_000_000, pix_fmt: :bgr666, rst: 25)
   ```
   """
   @doc functions: :exported
