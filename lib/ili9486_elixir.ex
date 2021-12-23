@@ -43,6 +43,10 @@ defmodule ILI9486 do
 
     Default value: `nil`.
 
+  - **touch_speed_hz**: SPI Speed for the touch panel
+
+    Default value: `50000`.
+
   - **dc**: Command/data register selection
 
     Default value: `24`.
@@ -202,6 +206,7 @@ defmodule ILI9486 do
     touch_irq = opts[:touch_irq]
     dc = opts[:dc] || 24
     speed_hz = opts[:speed_hz] || 16_000_000
+    touch_speed_hz = opts[:touch_speed_hz] || 50000
     width = opts[:width] || 480
     height = opts[:height] || 320
     offset_top = opts[:offset_top] || 0
@@ -230,7 +235,7 @@ defmodule ILI9486 do
     :parallel_8bit = data_bus
 
     {:ok, lcd_spi} = _init_spi(port, lcd_cs, speed_hz)
-    {:ok, touch_spi} = _init_spi(port, touch_cs, speed_hz)
+    {:ok, touch_spi} = _init_spi(port, touch_cs, touch_speed_hz)
     {:ok, touch_pid} = _init_touch_irq(touch_irq)
 
     # Set DC as output.
@@ -254,6 +259,7 @@ defmodule ILI9486 do
           touch_cs: touch_cs,
           dc: dc,
           speed_hz: speed_hz,
+          touch_speed_hz: touch_speed_hz,
           width: width,
           height: height,
           offset_top: offset_top,
