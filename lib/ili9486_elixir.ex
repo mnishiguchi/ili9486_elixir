@@ -302,7 +302,7 @@ defmodule ILI9486 do
         |> bsl(4)
         |> bor(diva)
 
-      %ILI9486{ self | frame_rate: frame_rate}
+      %ILI9486{self | frame_rate: frame_rate}
       |> command(kFRMCTR1())
       |> data(p1)
       |> data(rtna)
@@ -610,63 +610,54 @@ defmodule ILI9486 do
     |> command(kMADCTL(), cmd_data: _mad_mode(self))
     |> command(kPWCTR3(), cmd_data: 0x44)
     |> command(kVMCTR1(), cmd_data: [0x00, 0x00, 0x00, 0x00])
-    |> command(kGMCTRP1(),
-      cmd_data: [
-        0x0F,
-        0x1F,
-        0x1C,
-        0x0C,
-        0x0F,
-        0x08,
-        0x48,
-        0x98,
-        0x37,
-        0x0A,
-        0x13,
-        0x04,
-        0x11,
-        0x0D,
-        0x00
-      ]
-    )
-    |> command(kGMCTRN1(),
-      cmd_data: [
-        0x0F,
-        0x32,
-        0x2E,
-        0x0B,
-        0x0D,
-        0x05,
-        0x47,
-        0x75,
-        0x37,
-        0x06,
-        0x10,
-        0x03,
-        0x24,
-        0x20,
-        0x00
-      ]
-    )
-    |> command(kDGCTR1(),
-      cmd_data: [
-        0x0F,
-        0x32,
-        0x2E,
-        0x0B,
-        0x0D,
-        0x05,
-        0x47,
-        0x75,
-        0x37,
-        0x06,
-        0x10,
-        0x03,
-        0x24,
-        0x20,
-        0x00
-      ]
-    )
+    |> command(kGMCTRP1())
+    |> data(0x0F)
+    |> data(0x1F)
+    |> data(0x1C)
+    |> data(0x0C)
+    |> data(0x0F)
+    |> data(0x08)
+    |> data(0x48)
+    |> data(0x98)
+    |> data(0x37)
+    |> data(0x0A)
+    |> data(0x13)
+    |> data(0x04)
+    |> data(0x11)
+    |> data(0x0D)
+    |> data(0x00)
+    |> command(kGMCTRN1())
+    |> data(0x0F)
+    |> data(0x32)
+    |> data(0x2E)
+    |> data(0x0B)
+    |> data(0x0D)
+    |> data(0x05)
+    |> data(0x47)
+    |> data(0x75)
+    |> data(0x37)
+    |> data(0x06)
+    |> data(0x10)
+    |> data(0x03)
+    |> data(0x24)
+    |> data(0x20)
+    |> data(0x00)
+    |> command(kDGCTR1())
+    |> data(0x0F)
+    |> data(0x32)
+    |> data(0x2E)
+    |> data(0x0B)
+    |> data(0x0D)
+    |> data(0x05)
+    |> data(0x47)
+    |> data(0x75)
+    |> data(0x37)
+    |> data(0x06)
+    |> data(0x10)
+    |> data(0x03)
+    |> data(0x24)
+    |> data(0x20)
+    |> data(0x00)
     |> set_display_mode(:normal)
     |> command(kINVOFF())
     |> command(kSLPOUT(), delay: 200)
