@@ -303,7 +303,9 @@ defmodule ILI9486 do
         |> bor(diva)
 
       %ILI9486{ self | frame_rate: frame_rate}
-      |> command(kFRMCTR1(), cmd_data: [p1, rtna])
+      |> command(kFRMCTR1())
+      |> data(p1)
+      |> data(rtna)
     end
   end
 
@@ -595,7 +597,7 @@ defmodule ILI9486 do
     |> bor(kMAD_Y_UP())
   end
 
-  defp init(self = %ILI9486{}) do
+  defp init(self = %ILI9486{frame_rate: frame_rate}) do
     self
     # software reset
     |> command(kSWRESET(), delay: 120)
@@ -669,6 +671,7 @@ defmodule ILI9486 do
     |> command(kINVOFF())
     |> command(kSLPOUT(), delay: 200)
     |> command(kDISPON())
+    |> set_frame_rate(frame_rate)
   end
 
   defp set_window(self = %ILI9486{opts: board}, opts = [x0: 0, y0: 0, x1: nil, y2: nil]) do
