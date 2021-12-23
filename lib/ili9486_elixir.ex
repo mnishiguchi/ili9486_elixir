@@ -5,8 +5,8 @@ defmodule ILI9486 do
 
   use Bitwise
 
-  @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus]
-  defstruct [:gpio, :opts, :lcd_spi, :touch_spi, :pix_fmt, :rotation, :mad_mode, :data_bus]
+  @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus, :display_mode]
+  defstruct [:gpio, :opts, :lcd_spi, :touch_spi, :pix_fmt, :rotation, :mad_mode, :data_bus, :display_mode]
 
   @doc """
   New connection to an ILI9486
@@ -92,6 +92,7 @@ defmodule ILI9486 do
     rotation = opts[:rotation] || 90
     mad_mode = opts[:mad_mode] || :right_down
     data_bus = opts[:data_bus] || :parallel_8bit
+    display_mode = opts[:display_mode] || :normal
 
     # supported data connection
     # only 8-bit parallel MCU interface for now
@@ -130,7 +131,8 @@ defmodule ILI9486 do
       pix_fmt: pix_fmt,
       rotation: rotation,
       mad_mode: mad_mode,
-      data_bus: data_bus
+      data_bus: data_bus,
+      display_mode: display_mode
     }
     |> ILI9486.reset()
     |> init()
@@ -217,6 +219,30 @@ defmodule ILI9486 do
 
   def set_display(self = %ILI9486{}, :off) do
     command(self, kDISPOFF())
+  end
+
+  @doc """
+  Set display mode
+
+  - **self**: `%ILI9486{}`
+  - **status**: Valid values: `:normal`, `:partial`, `:idle`
+
+  **return**: `self`
+  """
+  @doc functions: :exported
+  def set_display_mode(self = %ILI9486{}, display_mode=:normal) do
+    %ILI9486{ self | display_mode: display_mode }
+    |> command(kNORON())
+  end
+
+  def set_display_mode(self = %ILI9486{}, display_mode=:partial) do
+    %ILI9486{ self | display_mode: display_mode }
+    |> command(kPTLON())
+  end
+
+  def set_display_mode(self = %ILI9486{}, display_mode=:idle) do
+    %ILI9486{ self | display_mode: display_mode }
+    |> command(self, kIDLEON())
   end
 
   @doc """
@@ -573,11 +599,10 @@ defmodule ILI9486 do
         0x00
       ]
     )
-    |> command(kNORON())
+    |> set_display_mode(:normal)
     |> command(kINVOFF())
     |> command(kSLPOUT(), delay: 200)
     |> command(kDISPON())
-    |> command(kIDLEOFF())
   end
 
   defp set_window(self = %ILI9486{opts: board}, opts = [x0: 0, y0: 0, x1: nil, y2: nil]) do
