@@ -29,6 +29,10 @@ defmodule Ili9486Elixir.MixProject do
     ]
   end
 
+  defp description() do
+    "ILI9486 Elixir driver"
+  end
+
   defp elixirc_paths(_), do: ~w(lib)
 
   defp docs() do
