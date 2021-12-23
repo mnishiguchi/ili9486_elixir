@@ -372,7 +372,7 @@ defmodule ILI9486 do
   def display(self = %ILI9486{pix_fmt: target_color}, image_data, source_color)
       when is_binary(image_data) and (source_color == :rgb888 or source_color == :bgr888) and
              (target_color == :rgb666 or target_color == :bgr666) do
-    display_666(self, :binary.bin_to_list(image_data))
+    display_666(self, to_666(image_data, source_color, target_color))
   end
 
   def display(self, image_data, source_color)
@@ -696,6 +696,13 @@ defmodule ILI9486 do
   end
 
   defp to_565(image_data, source_color, target_color)
+       when is_binary(image_data) do
+    image_data
+    |> CvtColor.cvt(source_color, target_color)
+    |> :binary.bin_to_list()
+  end
+
+  defp to_666(image_data, source_color, target_color)
        when is_binary(image_data) do
     image_data
     |> CvtColor.cvt(source_color, target_color)
