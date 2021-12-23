@@ -1,6 +1,6 @@
 # ILI9486-Elixir
 
-ST7789 driver for Elixir.
+ILI9486 driver for Elixir.
 
 Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
 
