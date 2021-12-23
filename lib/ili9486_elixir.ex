@@ -6,7 +6,17 @@ defmodule ILI9486 do
   use Bitwise
 
   @enforce_keys [:gpio, :opts, :lcd_spi, :data_bus, :display_mode]
-  defstruct [:gpio, :opts, :lcd_spi, :touch_spi, :pix_fmt, :rotation, :mad_mode, :data_bus, :display_mode]
+  defstruct [
+    :gpio,
+    :opts,
+    :lcd_spi,
+    :touch_spi,
+    :pix_fmt,
+    :rotation,
+    :mad_mode,
+    :data_bus,
+    :display_mode
+  ]
 
   @doc """
   New connection to an ILI9486
@@ -225,23 +235,23 @@ defmodule ILI9486 do
   Set display mode
 
   - **self**: `%ILI9486{}`
-  - **status**: Valid values: `:normal`, `:partial`, `:idle`
+  - **display_mode**: Valid values: `:normal`, `:partial`, `:idle`
 
   **return**: `self`
   """
   @doc functions: :exported
-  def set_display_mode(self = %ILI9486{}, display_mode=:normal) do
-    %ILI9486{ self | display_mode: display_mode }
+  def set_display_mode(self = %ILI9486{}, display_mode = :normal) do
+    %ILI9486{self | display_mode: display_mode}
     |> command(kNORON())
   end
 
-  def set_display_mode(self = %ILI9486{}, display_mode=:partial) do
-    %ILI9486{ self | display_mode: display_mode }
+  def set_display_mode(self = %ILI9486{}, display_mode = :partial) do
+    %ILI9486{self | display_mode: display_mode}
     |> command(kPTLON())
   end
 
-  def set_display_mode(self = %ILI9486{}, display_mode=:idle) do
-    %ILI9486{ self | display_mode: display_mode }
+  def set_display_mode(self = %ILI9486{}, display_mode = :idle) do
+    %ILI9486{self | display_mode: display_mode}
     |> command(self, kIDLEON())
   end
 
