@@ -7,23 +7,64 @@ Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
 ## Example
 
 ```elixir
-# default (Waveshare 3.5" SPI LCD RPi LCD (A) (480x320))
+# default
 # assuming LCD device at /dev/spidev0.0
 # DC connects to PIN 24
 # RST not connected
 # SPI speed: 16MHz
 # Pixel Format: BGR565
-disp = ILI9486.new()
+{:ok, disp} = GenServer.start_link(ILI9486, [])
 ```
 
 ```elixir
-# high-speed variant (125MHz SPI) (Waveshare 3.5" SPI LCD RPi LCD (C) (480x320))
+# default with touch panel
+# DC connects to PIN 24
+# RST connects to PIN 25
+# SPI speed: 16MHz
+# Pixel Format: RGB666 (for demo only, not necessary)
+# Touch panel device at /dev/spidev0.1
+# Touch panel IRQ PIN 17
+{:ok, disp} = GenServer.start_link(ILI9486,
+    speed_hz: 16_000_000,
+    pix_fmt: :bgr666,
+    rst: 25,
+    touch_cs: 1,
+    touch_irq: 17
+)
+```
+
+high-speed variant (125MHz SPI)
+```elixir
 # assuming LCD device at /dev/spidev0.0
 # DC connects to PIN 24
 # RST connects to PIN 25 (for demo only, not necessary)
 # SPI speed: 125MHz
 # Pixel Format: BGR666 (for demo only, not necessary)
-disp = ILI9486.new(is_high_speed: true, speed_hz: 125_000_000, pix_fmt: :bgr666, rst: 25)
+{:ok, disp} = GenServer.start_link(ILI9486,
+    is_high_speed: true,
+    speed_hz: 125_000_000,
+    pix_fmt: :bgr666,
+    rst: 25
+)
+```
+
+high-speed variant (125MHz SPI) with touch panel
+```elixir
+# assuming LCD device at /dev/spidev0.0
+# DC connects to PIN 24
+# RST connects to PIN 25 (for demo only, not necessary)
+# SPI speed: 125MHz
+# Pixel Format: BGR666 (for demo only, not necessary)
+# Touch panel device at /dev/spidev0.1
+# Touch panel IRQ PIN 17
+{:ok, disp} = GenServer.start_link(ILI9486,
+    is_high_speed: true,
+    speed_hz: 125_000_000,
+    pix_fmt: :bgr666,
+    rst: 25,
+    touch_cs: 1,
+    touch_irq: 17
+)
 ```
 
 ## Installation
