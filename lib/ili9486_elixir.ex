@@ -76,6 +76,44 @@ defmodule ILI9486 do
 
     Default value: `:right_down`. Valid values: `:right_down`, `:right_up` and `:rgb_mode`
 
+  - **display_mode**: Display mode.
+
+    Default value: `:normal`. Enters normal display mode after initialization.
+
+  - **frame_rate**: Frame rate.
+
+    Default value: `70`. Valid frame rate should be one of the following:
+
+    - 28
+    - 30
+    - 32
+    - 34
+    - 36
+    - 39
+    - 42
+    - 46
+    - 50
+    - 56
+    - 62
+    - 70
+    - 81
+    - 96
+    - 117
+
+  - **diva**: Division ratio for internal clocks.
+
+    Default value: `0b00`.
+
+    - `0b00`: focs
+    - `0b01`: focs/2
+    - `0b10`: focs/4
+    - `0b11`: focs/8
+
+  - **rtna**: `RTNA[4:0]` is used to set 1H (line) period of Normal mode at CPU interface.
+
+    Default value: `0b10001`. Valid value starts from `0b10000` (16 clocks) to `0b11111` (31 clocks), i.e.,
+    clocks increases by 1 as `rtna` increasing by 1.
+
   **return**: `%ILI9486{}`
 
   ## Example
