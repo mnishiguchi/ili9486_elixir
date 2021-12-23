@@ -302,7 +302,7 @@ defmodule ILI9486 do
         |> bsl(4)
         |> bor(diva)
 
-      self
+      %ILI9486{ self | frame_rate: frame_rate}
       |> command(kFRMCTR1(), cmd_data: [p1, rtna])
     end
   end
