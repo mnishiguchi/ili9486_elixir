@@ -388,7 +388,7 @@ defmodule ILI9486 do
   def display_666(self, image_data) when is_list(image_data) do
     self
     |> set_window(x0: 0, y0: 0, x1: nil, y2: nil)
-    |> send(image_data, true, 4096)
+    |> send(image_data, true, 0x8000)
   end
 
   @doc """
@@ -485,7 +485,7 @@ defmodule ILI9486 do
   **return**: `self`
   """
   @doc functions: :exported
-  def send(self, bytes, is_data, chunk_size \\ 4096)
+  def send(self, bytes, is_data, chunk_size \\ 0x8000)
 
   def send(self = %ILI9486{}, bytes, true, chunk_size) do
     send(self, bytes, 1, chunk_size)
