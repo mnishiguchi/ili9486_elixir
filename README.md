@@ -2,7 +2,9 @@
 
 ILI9486 driver for Elixir.
 
-Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
+Tested on 
+- Waveshare 3.5" SPI LCD RPi LCD (A) (480x320). 16MHz
+- Waveshare 3.5" SPI LCD RPi LCD (C) (480x320). 125MHz
 
 ## Example
 
@@ -75,7 +77,7 @@ by adding `ili9486_elixir` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:ili9486_elixir, "~> 0.1.0"}
+    {:ili9486_elixir, "~> 0.1.1"}
   ]
 end
 ```
@@ -83,4 +85,3 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/ili9486_elixir](https://hexdocs.pm/ili9486_elixir).
-
