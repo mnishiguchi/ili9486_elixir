@@ -13,7 +13,7 @@ Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
 # RST not connected
 # SPI speed: 16MHz
 # Pixel Format: BGR565
-{:ok, disp} = GenServer.start_link(ILI9486, [])
+{:ok, disp} = ILI9486.new()
 ```
 
 ```elixir
@@ -24,7 +24,7 @@ Tested on Waveshare 3.5" SPI LCD RPi LCD (A) (480x320).
 # Pixel Format: RGB666 (for demo only, not necessary)
 # Touch panel device at /dev/spidev0.1
 # Touch panel IRQ PIN 17
-{:ok, disp} = GenServer.start_link(ILI9486,
+{:ok, disp} = ILI9486.new(
     speed_hz: 16_000_000,
     pix_fmt: :bgr666,
     rst: 25,
@@ -40,7 +40,7 @@ high-speed variant (125MHz SPI)
 # RST connects to PIN 25 (for demo only, not necessary)
 # SPI speed: 125MHz
 # Pixel Format: BGR666 (for demo only, not necessary)
-{:ok, disp} = GenServer.start_link(ILI9486,
+{:ok, disp} = ILI9486.new(
     is_high_speed: true,
     speed_hz: 125_000_000,
     pix_fmt: :bgr666,
@@ -57,7 +57,7 @@ high-speed variant (125MHz SPI) with touch panel
 # Pixel Format: BGR666 (for demo only, not necessary)
 # Touch panel device at /dev/spidev0.1
 # Touch panel IRQ PIN 17
-{:ok, disp} = GenServer.start_link(ILI9486,
+{:ok, disp} = ILI9486.new(
     is_high_speed: true,
     speed_hz: 125_000_000,
     pix_fmt: :bgr666,
