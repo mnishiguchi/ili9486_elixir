@@ -199,7 +199,7 @@ defmodule ILI9486 do
   """
   @doc functions: :client
   @impl true
-  def init(opts \\ []) do
+  def init(opts) do
     port = opts[:port] || 0
     lcd_cs = opts[:lcd_cs] || 0
     touch_cs = opts[:touch_cs]
@@ -215,7 +215,6 @@ defmodule ILI9486 do
     pix_fmt = opts[:pix_fmt] || :bgr565
     rotation = opts[:rotation] || 90
     mad_mode = opts[:mad_mode] || :right_down
-    data_bus = opts[:data_bus] || :parallel_8bit
     display_mode = opts[:display_mode] || :normal
     frame_rate = opts[:frame_rate] || 70
     diva = opts[:diva] || 0b00
@@ -225,14 +224,19 @@ defmodule ILI9486 do
 
     chunk_size =
       if chunk_size == nil do
-        if is_high_speed, do: 0x8000, else: 4096
+        if is_high_speed, do: 4096, else: 4096
       end
 
     # supported data connection
-    # only 8-bit parallel MCU interface for now
-    # - 65K colors
-    # - 262K colors
-    :parallel_8bit = data_bus
+    # 8-bit parallel MCU interface for low speed ones
+    #  - Waveshare RPi 3.5 LCD (A) / Tested
+    #  - Waveshare RPi 3.5 LCD (B)
+    # 16-bit parallel MCU interface for the high speed one
+    #  - Waveshare RPi 3.5 LCD (C) / Tested
+    # :parallel_16bit and :parallel_8bit supported colors
+    #   - 65K colors
+    #   - 262K colors
+    data_bus = if is_high_speed, do: :parallel_16bit, else: :parallel_8bit
 
     {:ok, lcd_spi} = _init_spi(port, lcd_cs, speed_hz)
     {:ok, touch_spi} = _init_spi(port, touch_cs, touch_speed_hz)
@@ -480,7 +484,7 @@ defmodule ILI9486 do
   defp _display_565(self, image_data) when is_list(image_data) do
     self
     |> _set_window(x0: 0, y0: 0, x1: nil, y2: nil)
-    |> _send(image_data, true)
+    |> _send(image_data, true, false)
   end
 
   @doc """
@@ -504,7 +508,7 @@ defmodule ILI9486 do
   defp _display_666(self, image_data) when is_list(image_data) do
     self
     |> _set_window(x0: 0, y0: 0, x1: nil, y2: nil)
-    |> _send(image_data, true)
+    |> _send(image_data, true, false)
   end
 
   @doc """
@@ -578,12 +582,25 @@ defmodule ILI9486 do
     GenServer.call(self_pid, {:command, cmd, opts})
   end
 
-  defp _command(self, cmd, opts \\ []) when is_integer(cmd) do
+  defp _command(self, cmd, opts \\ [])
+  defp _command(self = %ILI9486{data_bus: :parallel_8bit}, cmd, opts) when is_integer(cmd) do
     cmd_data = opts[:cmd_data] || []
     delay = opts[:delay] || 0
 
     self
-    |> _send(cmd, false)
+    |> _send(cmd, false, false)
+    |> _data(cmd_data)
+
+    :timer.sleep(delay)
+    self
+  end
+
+  defp _command(self = %ILI9486{data_bus: :parallel_16bit}, cmd, opts) when is_integer(cmd) do
+    cmd_data = opts[:cmd_data] || []
+    delay = opts[:delay] || 0
+
+    self
+    |> _send(cmd, false, true)
     |> _data(cmd_data)
 
     :timer.sleep(delay)
@@ -607,8 +624,12 @@ defmodule ILI9486 do
 
   defp _data(self, []), do: self
 
-  defp _data(self, data) do
-    _send(self, data, true)
+  defp _data(self = %ILI9486{data_bus: :parallel_8bit}, data) do
+    _send(self, data, true, false)
+  end
+
+  defp _data(self = %ILI9486{data_bus: :parallel_16bit}, data) do
+    _send(self, data, true, true)
   end
 
   @doc """
@@ -636,26 +657,33 @@ defmodule ILI9486 do
     GenServer.call(self_pid, {:send, bytes, is_data})
   end
 
-  defp _send(self, bytes, is_data)
-
-  defp _send(self = %ILI9486{}, bytes, true) do
-    _send(self, bytes, 1)
+  defp to_be_u16(u8_bytes) do
+    u8_bytes
+      |> Enum.map(fn u8 -> [0x00, u8] end)
+      |> List.flatten()
   end
 
-  defp _send(self = %ILI9486{}, bytes, false) do
-    _send(self, bytes, 0)
+  defp _send(self, bytes, is_data, to_be16 \\ false)
+
+  defp _send(self = %ILI9486{}, bytes, true, to_be16) do
+    _send(self, bytes, 1, to_be16)
   end
 
-  defp _send(self = %ILI9486{}, bytes, is_data)
+  defp _send(self = %ILI9486{}, bytes, false, to_be16) do
+    _send(self, bytes, 0, to_be16)
+  end
+
+  defp _send(self = %ILI9486{}, bytes, is_data, to_be16)
        when (is_data == 0 or is_data == 1) and is_integer(bytes) do
-    _send(self, [Bitwise.band(bytes, 0xFF)], is_data)
+    _send(self, [Bitwise.band(bytes, 0xFF)], is_data, to_be16)
   end
 
-  defp _send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size}, bytes, is_data)
+  defp _send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size, data_bus: data_bus}, bytes, is_data, to_be16)
        when (is_data == 0 or is_data == 1) and is_list(bytes) do
     gpio_dc = gpio[:dc]
-    Circuits.GPIO.write(gpio_dc, is_data)
+    bytes = if to_be16, do: to_be_u16(bytes), else: bytes
 
+    Circuits.GPIO.write(gpio_dc, is_data)
     for xfdata <-
           bytes
           |> Enum.chunk_every(chunk_size)
@@ -859,45 +887,10 @@ defmodule ILI9486 do
     |> bor(kMAD_Y_UP())
   end
 
-  defp _init(self = %ILI9486{frame_rate: frame_rate}, is_high_speed) do
+  defp _init(self = %ILI9486{frame_rate: frame_rate}, false) do
+    self
     # software reset
-    _command(self, kSWRESET(), delay: 120)
-
-    if is_high_speed do
-      self
-      |> _command(kHISPEEDF1())
-      |> _data(0x36)
-      |> _data(0x04)
-      |> _data(0x00)
-      |> _data(0x3C)
-      |> _data(0x0F)
-      |> _data(0x8F)
-      |> _command(kHISPEEDF2())
-      |> _data(0x18)
-      |> _data(0xA3)
-      |> _data(0x12)
-      |> _data(0x02)
-      |> _data(0xB2)
-      |> _data(0x12)
-      |> _data(0xFF)
-      |> _data(0x10)
-      |> _data(0x00)
-      |> _command(kHISPEEDF8())
-      |> _data(0x21)
-      |> _data(0x04)
-      |> _command(kHISPEEDF9())
-      |> _data(0x00)
-      |> _data(0x08)
-      |> _command(kPWCTR2())
-      |> _data(0x41)
-      |> _command(kVMCTR1())
-      |> _data(0x00)
-      |> _data(0x91)
-      |> _data(0x80)
-      |> _data(0x00)
-    else
-      self
-    end
+    |> _command(kSWRESET(), delay: 120)
     # RGB mode off
     |> _command(kRGB_INTERFACE(), cmd_data: 0x00)
     # turn off sleep mode
@@ -906,7 +899,11 @@ defmodule ILI9486 do
     |> _command(kPIXFMT(), cmd_data: _get_pix_fmt(self))
     |> _command(kMADCTL(), cmd_data: _mad_mode(self))
     |> _command(kPWCTR3(), cmd_data: 0x44)
-    |> _command(kVMCTR1(), cmd_data: [0x00, 0x00, 0x00, 0x00])
+    |> _command(kVMCTR1())
+    |> _data(0x00)
+    |> _data(0x00)
+    |> _data(0x00)
+    |> _data(0x00)
     |> _command(kGMCTRP1())
     |> _data(0x0F)
     |> _data(0x1F)
@@ -960,6 +957,70 @@ defmodule ILI9486 do
     |> _command(kSLPOUT(), delay: 200)
     |> _command(kDISPON())
     |> _set_frame_rate(frame_rate)
+  end
+
+  defp _init(self = %ILI9486{frame_rate: frame_rate}, true) do
+    self
+    # software reset
+    # |> _command(kSWRESET(), delay: 120)
+      # RGB mode off
+    |> _command(kRGB_INTERFACE(), cmd_data: 0x00)
+      # turn off sleep mode
+    |> _command(kSLPOUT(), delay: 250)
+      # interface format
+    |> _command(kPIXFMT(), cmd_data: _get_pix_fmt(self))
+    |> _command(kPWCTR3(), cmd_data: 0x44)
+    |> _command(kVMCTR1(), cmd_data: [0x00, 0x00, 0x00, 0x00])
+    |> _command(kGMCTRP1())
+    |> _data(0x0F)
+    |> _data(0x1F)
+    |> _data(0x1C)
+    |> _data(0x0C)
+    |> _data(0x0F)
+    |> _data(0x08)
+    |> _data(0x48)
+    |> _data(0x98)
+    |> _data(0x37)
+    |> _data(0x0A)
+    |> _data(0x13)
+    |> _data(0x04)
+    |> _data(0x11)
+    |> _data(0x0D)
+    |> _data(0x00)
+    |> _command(kGMCTRN1())
+    |> _data(0x0F)
+    |> _data(0x32)
+    |> _data(0x2E)
+    |> _data(0x0B)
+    |> _data(0x0D)
+    |> _data(0x05)
+    |> _data(0x47)
+    |> _data(0x75)
+    |> _data(0x37)
+    |> _data(0x06)
+    |> _data(0x10)
+    |> _data(0x03)
+    |> _data(0x24)
+    |> _data(0x20)
+    |> _data(0x00)
+    |> _command(kDGCTR1())
+    |> _data(0x0F)
+    |> _data(0x32)
+    |> _data(0x2E)
+    |> _data(0x0B)
+    |> _data(0x0D)
+    |> _data(0x05)
+    |> _data(0x47)
+    |> _data(0x75)
+    |> _data(0x37)
+    |> _data(0x06)
+    |> _data(0x10)
+    |> _data(0x03)
+    |> _data(0x24)
+    |> _data(0x20)
+    |> _data(0x00)
+    |> _command(kDISPON(), delay: 100)
+    |> _command(kMADCTL(), cmd_data: _mad_mode(self))
   end
 
   defp _set_window(self = %ILI9486{opts: board}, opts = [x0: 0, y0: 0, x1: nil, y2: nil]) do
