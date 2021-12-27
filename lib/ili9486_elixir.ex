@@ -678,7 +678,7 @@ defmodule ILI9486 do
     _send(self, [Bitwise.band(bytes, 0xFF)], is_data, to_be16)
   end
 
-  defp _send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size, data_bus: data_bus}, bytes, is_data, to_be16)
+  defp _send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size}, bytes, is_data, to_be16)
        when (is_data == 0 or is_data == 1) and is_list(bytes) do
     gpio_dc = gpio[:dc]
     bytes = if to_be16, do: to_be_u16(bytes), else: bytes
@@ -962,12 +962,12 @@ defmodule ILI9486 do
   defp _init(self = %ILI9486{frame_rate: frame_rate}, true) do
     self
     # software reset
-    # |> _command(kSWRESET(), delay: 120)
-      # RGB mode off
+    |> _command(kSWRESET(), delay: 120)
+    # RGB mode off
     |> _command(kRGB_INTERFACE(), cmd_data: 0x00)
-      # turn off sleep mode
+    # turn off sleep mode
     |> _command(kSLPOUT(), delay: 250)
-      # interface format
+    # interface format
     |> _command(kPIXFMT(), cmd_data: _get_pix_fmt(self))
     |> _command(kPWCTR3(), cmd_data: 0x44)
     |> _command(kVMCTR1(), cmd_data: [0x00, 0x00, 0x00, 0x00])
@@ -1019,8 +1019,11 @@ defmodule ILI9486 do
     |> _data(0x24)
     |> _data(0x20)
     |> _data(0x00)
+    |> _set_display_mode(:normal)
+    |> _command(kINVOFF())
     |> _command(kDISPON(), delay: 100)
     |> _command(kMADCTL(), cmd_data: _mad_mode(self))
+    |> _set_frame_rate(frame_rate)
   end
 
   defp _set_window(self = %ILI9486{opts: board}, opts = [x0: 0, y0: 0, x1: nil, y2: nil]) do
