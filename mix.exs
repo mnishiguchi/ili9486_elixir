@@ -22,7 +22,7 @@ defmodule Ili9486Elixir.MixProject do
 
   defp deps do
     [
-      {:cvt_color, "~> 0.1.0-dev", github: "cocoa-xu/cvt_color"},
+      {:cvt_color, "~> 0.1.0"},
       {:circuits_gpio, "~> 0.4"},
       {:circuits_spi, "~> 0.1"},
       {:ex_doc, "~> 0.14", only: :dev, runtime: false}
