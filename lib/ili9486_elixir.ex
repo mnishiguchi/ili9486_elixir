@@ -233,10 +233,13 @@ defmodule ILI9486 do
 
     chunk_size =
       if chunk_size == nil do
-        # todo: Circuits.SPI.max_transfer_size()
-        if is_high_speed, do: 4096, else: 4096
+        if is_high_speed do
+          Enum.min([0x8000, Circuits.SPI.max_transfer_size()])
+        else
+          Enum.min([4096, Circuits.SPI.max_transfer_size()])
+        end
       else
-        chunk_size
+        Enum.min([chunk_size, Circuits.SPI.max_transfer_size()])
       end
 
     # supported data connection
