@@ -233,7 +233,10 @@ defmodule ILI9486 do
 
     chunk_size =
       if chunk_size == nil do
+        # todo: Circuits.SPI.max_transfer_size()
         if is_high_speed, do: 4096, else: 4096
+      else
+        chunk_size
       end
 
     # supported data connection
