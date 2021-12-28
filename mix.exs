@@ -24,7 +24,7 @@ defmodule Ili9486Elixir.MixProject do
     [
       {:cvt_color, "~> 0.1.1"},
       {:circuits_gpio, "~> 0.4"},
-      {:circuits_spi, "~> 0.1"},
+      {:circuits_spi, "~> 1.0"},
       {:ex_doc, "~> 0.14", only: :dev, runtime: false}
     ]
   end
