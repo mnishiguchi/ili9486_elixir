@@ -11,6 +11,10 @@ build:
       - mix.lock
       - .gitlab-ci.yml
   script:
+    - DEBIAN_FRONTEND=noninteractive apt update -q -y
+    - DEBIAN_FRONTEND=noninteractive apt install -y gcc g++ build-essential cmake
+    - mix local.hex --force
+    - mix local.rebar --force
     - mix deps.get
     - mix compile
     - mix format --check-formatted
