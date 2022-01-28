@@ -1,0 +1,17 @@
+image: elixir:1.13
+build:
+  stage: build
+  variables:
+    MIX_ENV: test
+  only:
+    changes:
+      - lib/**
+      - test/**
+      - '*.exs'
+      - mix.lock
+      - .gitlab-ci.yml
+script:
+  - mix deps.get
+  - mix compile
+  - mix format --check-formatted
+
