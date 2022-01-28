@@ -10,8 +10,8 @@ build:
       - '*.exs'
       - mix.lock
       - .gitlab-ci.yml
-script:
-  - mix deps.get
-  - mix compile
-  - mix format --check-formatted
+  script:
+    - mix deps.get
+    - mix compile
+    - mix format --check-formatted
 
