@@ -77,7 +77,7 @@ by adding `ili9486_elixir` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:ili9486_elixir, "~> 0.1.2"}
+    {:ili9486_elixir, "~> 0.1.3"}
   ]
 end
 ```

@@ -154,7 +154,7 @@ defmodule ILI9486 do
   # Pixel Format: RGB666 (for demo only, not necessary)
   # Touch panel device at /dev/spidev0.1
   # Touch panel IRQ PIN 17
-  {:ok, disp} = ILI9486.new(,
+  {:ok, disp} = ILI9486.new(
     speed_hz: 16_000_000,
     pix_fmt: :bgr666,
     rst: 25,
@@ -170,7 +170,7 @@ defmodule ILI9486 do
   # RST connects to PIN 25 (for demo only, not necessary)
   # SPI speed: 125MHz
   # Pixel Format: BGR666 (for demo only, not necessary)
-  {:ok, disp} = ILI9486.new(,
+  {:ok, disp} = ILI9486.new(
     is_high_speed: true,
     speed_hz: 125_000_000,
     pix_fmt: :bgr666,
@@ -187,7 +187,7 @@ defmodule ILI9486 do
   # Pixel Format: BGR666 (for demo only, not necessary)
   # Touch panel device at /dev/spidev0.1
   # Touch panel IRQ PIN 17
-  {:ok, disp} = ILI9486.new(,
+  {:ok, disp} = ILI9486.new(
     is_high_speed: true,
     speed_hz: 125_000_000,
     pix_fmt: :bgr666,
