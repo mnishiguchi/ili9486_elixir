@@ -598,6 +598,7 @@ defmodule ILI9486 do
   end
 
   defp _command(self, cmd, opts \\ [])
+
   defp _command(self = %ILI9486{data_bus: :parallel_8bit}, cmd, opts) when is_integer(cmd) do
     cmd_data = opts[:cmd_data] || []
     delay = opts[:delay] || 0
@@ -674,28 +675,32 @@ defmodule ILI9486 do
 
   defp to_be_u16(u8_bytes) do
     u8_bytes
-      |> Enum.map(fn u8 -> [0x00, u8] end)
-      |> IO.iodata_to_binary()
+    |> Enum.map(fn u8 -> [0x00, u8] end)
+    |> IO.iodata_to_binary()
   end
 
   defp chunk_binary(binary, chunk_size) when is_binary(binary) do
     total_bytes = byte_size(binary)
     full_chunks = div(total_bytes, chunk_size)
+
     chunks =
       if full_chunks > 0 do
-        for i <- 0..(full_chunks-1), reduce: [] do
+        for i <- 0..(full_chunks - 1), reduce: [] do
           acc -> [:binary.part(binary, chunk_size * i, chunk_size) | acc]
         end
       else
         []
       end
+
     remaining = rem(total_bytes, chunk_size)
+
     chunks =
       if remaining > 0 do
         [:binary.part(binary, chunk_size * full_chunks, remaining) | chunks]
       else
         chunks
       end
+
     Enum.reverse(chunks)
   end
 
@@ -711,7 +716,7 @@ defmodule ILI9486 do
 
   defp _send(self = %ILI9486{}, bytes, is_data, to_be16)
        when (is_data == 0 or is_data == 1) and is_integer(bytes) do
-    _send(self, << Bitwise.band(bytes, 0xFF) >>, is_data, to_be16)
+    _send(self, <<Bitwise.band(bytes, 0xFF)>>, is_data, to_be16)
   end
 
   defp _send(self = %ILI9486{}, bytes, is_data, to_be16)
@@ -719,12 +724,18 @@ defmodule ILI9486 do
     _send(self, IO.iodata_to_binary(bytes), is_data, to_be16)
   end
 
-  defp _send(self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size}, bytes, is_data, to_be16)
+  defp _send(
+         self = %ILI9486{gpio: gpio, lcd_spi: spi, chunk_size: chunk_size},
+         bytes,
+         is_data,
+         to_be16
+       )
        when (is_data == 0 or is_data == 1) and is_binary(bytes) do
     gpio_dc = gpio[:dc]
     bytes = if to_be16, do: to_be_u16(:binary.bin_to_list(bytes)), else: bytes
 
     Circuits.GPIO.write(gpio_dc, is_data)
+
     for xfdata <- chunk_binary(bytes, chunk_size) do
       {:ok, _ret} = Circuits.SPI.transfer(spi, xfdata)
     end
