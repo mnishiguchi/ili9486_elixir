@@ -229,18 +229,22 @@ defmodule ILI9486 do
     diva = opts[:diva] || 0b00
     rtna = opts[:rtna] || 0b10001
     is_high_speed = opts[:is_high_speed] || false
-    chunk_size = opts[:chunk_size]
 
-    chunk_size =
-      if chunk_size == nil do
-        if is_high_speed do
-          Enum.min([0x8000, Circuits.SPI.max_transfer_size()])
-        else
-          Enum.min([4096, Circuits.SPI.max_transfer_size()])
+    calc_chunk_size = fn spi_bus ->
+      from_opts = opts[:chunk_size]
+
+      desired_size =
+        cond do
+          is_integer(from_opts) and from_opts > 0 -> from_opts
+          is_high_speed -> 0x8000
+          true -> 4_096
         end
-      else
-        Enum.min([chunk_size, Circuits.SPI.max_transfer_size()])
-      end
+
+      driver_limit = Circuits.SPI.max_transfer_size(spi_bus)
+      effective_limit = if driver_limit > 0, do: driver_limit, else: desired_size
+
+      min(desired_size, effective_limit)
+    end
 
     # supported data connection
     # 8-bit parallel MCU interface for low speed ones
@@ -293,7 +297,7 @@ defmodule ILI9486 do
         frame_rate: frame_rate,
         diva: diva,
         rtna: rtna,
-        chunk_size: chunk_size
+        chunk_size: calc_chunk_size.(lcd_spi)
       }
       |> _reset()
       |> _init(is_high_speed)
