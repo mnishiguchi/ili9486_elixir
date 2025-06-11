@@ -257,15 +257,49 @@ defmodule ILI9486 do
     #   - 262K colors
     data_bus = if is_high_speed, do: :parallel_16bit, else: :parallel_8bit
 
-    {:ok, lcd_spi} = _init_spi(port, lcd_cs, speed_hz)
-    {:ok, touch_spi} = _init_spi(port, touch_cs, touch_speed_hz)
+    lcd_spi =
+      if bus = opts[:spi_lcd] do
+        bus
+      else
+        {:ok, bus} = _init_spi(port, lcd_cs, speed_hz)
+        bus
+      end
+
+    touch_spi =
+      cond do
+        bus = opts[:spi_touch] ->
+          bus
+
+        touch_cs == nil ->
+          nil
+
+        true ->
+          {:ok, bus} = _init_spi(port, touch_cs, touch_speed_hz)
+          bus
+      end
+
+    gpio_dc =
+      if pin = opts[:gpio_dc] do
+        pin
+      else
+        {:ok, pin} = Circuits.GPIO.open(dc, :output)
+        pin
+      end
+
+    gpio_rst =
+      cond do
+        pin = opts[:gpio_rst] ->
+          pin
+
+        rst == nil ->
+          nil
+
+        true ->
+          {:ok, pin} = Circuits.GPIO.open(rst, :output)
+          pin
+      end
+
     {:ok, touch_pid} = _init_touch_irq(touch_irq)
-
-    # Set DC as output.
-    {:ok, gpio_dc} = Circuits.GPIO.open(dc, :output)
-
-    # Setup reset as output (if provided).
-    gpio_rst = _init_reset(rst)
 
     self =
       %ILI9486{
