@@ -1261,9 +1261,9 @@ defmodule ILI9486 do
   def kDGCTR2, do: 0xE3
 
   @doc functions: :constants
-  def kMAD_RGB, do: 0x08
+  def kMAD_RGB, do: 0x00
   @doc functions: :constants
-  def kMAD_BGR, do: 0x00
+  def kMAD_BGR, do: 0x08
   @doc functions: :constants
   def k18BIT_PIX, do: 0x66
   @doc functions: :constants
