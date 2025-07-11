@@ -133,6 +133,22 @@ defmodule ILI9486 do
 
     Default value: `4096` for the lo-speed variant. `0x8000` for the hi-speed variant.
 
+  - **spi_lcd**: pre-opened SPI handle for the LCD bus.
+
+    Default value: `nil`. If provided, overrides `:port` and `:lcd_cs`.
+
+  - **spi_touch**: pre-opened SPI handle for the touch panel bus.
+
+    Default value: `nil`. If provided, overrides `:port` and `:touch_cs`.
+
+  - **gpio_dc**: pre-opened GPIO pin for the D/C line.
+
+    Default value: `nil`. If provided, overrides `:dc`.
+
+  - **gpio_rst**: pre-opened GPIO pin for the reset line.
+
+    Default value: `nil`. If provided, overrides `:rst`.
+
   **return**: `%ILI9486{}`
 
   ## Example
@@ -209,6 +225,9 @@ defmodule ILI9486 do
 
   @impl true
   def init(opts) do
+    # Make sure terminate/2 is called on shutdown
+    Process.flag(:trap_exit, true)
+
     port = opts[:port] || 0
     lcd_cs = opts[:lcd_cs] || 0
     touch_cs = opts[:touch_cs]
@@ -229,18 +248,33 @@ defmodule ILI9486 do
     diva = opts[:diva] || 0b00
     rtna = opts[:rtna] || 0b10001
     is_high_speed = opts[:is_high_speed] || false
-    chunk_size = opts[:chunk_size]
 
-    chunk_size =
-      if chunk_size == nil do
-        if is_high_speed do
-          Enum.min([0x8000, Circuits.SPI.max_transfer_size()])
-        else
-          Enum.min([4096, Circuits.SPI.max_transfer_size()])
+    calc_chunk_size = fn spi_bus ->
+      from_opts = opts[:chunk_size]
+
+      desired_size =
+        cond do
+          is_integer(from_opts) and from_opts > 0 -> from_opts
+          is_high_speed -> 0x8000
+          true -> 4_096
         end
-      else
-        Enum.min([chunk_size, Circuits.SPI.max_transfer_size()])
-      end
+
+      driver_limit =
+        cond do
+          function_exported?(Circuits.SPI, :max_transfer_size, 1) ->
+            Circuits.SPI.max_transfer_size(spi_bus)
+
+          function_exported?(Circuits.SPI, :max_transfer_size, 0) ->
+            Circuits.SPI.max_transfer_size()
+
+          true ->
+            desired_size
+        end
+
+      effective_limit = if driver_limit > 0, do: driver_limit, else: desired_size
+
+      min(desired_size, effective_limit)
+    end
 
     # supported data connection
     # 8-bit parallel MCU interface for low speed ones
@@ -253,15 +287,32 @@ defmodule ILI9486 do
     #   - 262K colors
     data_bus = if is_high_speed, do: :parallel_16bit, else: :parallel_8bit
 
-    {:ok, lcd_spi} = _init_spi(port, lcd_cs, speed_hz)
-    {:ok, touch_spi} = _init_spi(port, touch_cs, touch_speed_hz)
+    lcd_spi =
+      Keyword.get_lazy(opts, :spi_lcd, fn ->
+        {:ok, bus} = _init_spi(port, lcd_cs, speed_hz)
+        bus
+      end)
+
+    touch_spi =
+      Keyword.get_lazy(opts, :spi_touch, fn ->
+        if touch_cs do
+          {:ok, bus} = _init_spi(port, touch_cs, touch_speed_hz)
+          bus
+        end
+      end)
+
+    gpio_dc =
+      Keyword.get_lazy(opts, :gpio_dc, fn ->
+        {:ok, pin} = Circuits.GPIO.open(dc, :output)
+        pin
+      end)
+
+    gpio_rst =
+      Keyword.get_lazy(opts, :gpio_rst, fn ->
+        if rst, do: _init_reset(rst)
+      end)
+
     {:ok, touch_pid} = _init_touch_irq(touch_irq)
-
-    # Set DC as output.
-    {:ok, gpio_dc} = Circuits.GPIO.open(dc, :output)
-
-    # Setup reset as output (if provided).
-    gpio_rst = _init_reset(rst)
 
     self =
       %ILI9486{
@@ -293,12 +344,29 @@ defmodule ILI9486 do
         frame_rate: frame_rate,
         diva: diva,
         rtna: rtna,
-        chunk_size: chunk_size
+        chunk_size: calc_chunk_size.(lcd_spi)
       }
       |> _reset()
       |> _init(is_high_speed)
 
     {:ok, self}
+  end
+
+  @doc """
+  Closes all SPI and GPIO resources on shutdown.
+  """
+  @impl true
+  def terminate(_reason, %{lcd_spi: lcd_spi, touch_spi: touch_spi, gpio: gpio}) do
+    dc_pin = gpio[:dc]
+    rst_pin = gpio[:rst]
+
+    Circuits.SPI.close(lcd_spi)
+    if touch_spi, do: Circuits.SPI.close(touch_spi)
+
+    Circuits.GPIO.close(dc_pin)
+    if rst_pin, do: Circuits.GPIO.close(rst_pin)
+
+    :ok
   end
 
   @doc """
