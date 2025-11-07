@@ -439,7 +439,7 @@ defmodule ILI9486 do
   Set display pixel format
 
   - **display**: `%ILI9486{}`
-  - **pix_fmt**: one of `:bgr565`, `:rgb565`, :bgr666`, `:rgb666`
+  - **pix_fmt**: one of `:bgr565`, `:rgb565`, `:bgr666`, `:rgb666`
 
   **return**: `display`
   """
