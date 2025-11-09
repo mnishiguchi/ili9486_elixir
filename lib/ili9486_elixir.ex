@@ -201,14 +201,12 @@ defmodule ILI9486 do
   )
   ```
   """
-  @doc functions: :client
   @spec start_link([ili9486_option()]) :: GenServer.on_start()
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: opts[:name])
   end
 
   @deprecated "Use start_link/1 instead"
-  @doc functions: :client
   @spec new([ili9486_option()]) :: GenServer.on_start()
   def new(opts \\ []) do
     GenServer.start_link(__MODULE__, opts)
@@ -376,7 +374,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec reset(pid()) :: :ok
   def reset(self_pid) do
     GenServer.call(self_pid, :reset)
@@ -404,7 +401,6 @@ defmodule ILI9486 do
 
   **return**: `%{height: height, width: width}`
   """
-  @doc functions: :client
   @spec size(pid()) :: %{height: pos_integer(), width: pos_integer()}
   def size(self_pid) do
     GenServer.call(self_pid, :size)
@@ -421,7 +417,6 @@ defmodule ILI9486 do
 
   **return**: one of `:bgr565`, `:rgb565`, `:bgr666`, `:rgb666`
   """
-  @doc functions: :client
   @spec pix_fmt(pid()) :: pixel_format()
   def pix_fmt(self_pid) do
     GenServer.call(self_pid, :pix_fmt)
@@ -439,7 +434,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec set_pix_fmt(pid(), pixel_format()) :: :ok
   def set_pix_fmt(self_pid, pix_fmt)
       when pix_fmt == :bgr565 or pix_fmt == :rgb565 or pix_fmt == :bgr666 or pix_fmt == :rgb666 do
@@ -460,7 +454,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec set_display(pid(), :on | :off) :: :ok
   def set_display(self_pid, status) when status == :on or status == :off do
     GenServer.call(self_pid, {:set_display, status})
@@ -482,7 +475,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec set_display_mode(pid(), display_mode()) :: :ok
   def set_display_mode(self_pid, display_mode) do
     GenServer.call(self_pid, {:set_display_mode, display_mode})
@@ -526,7 +518,6 @@ defmodule ILI9486 do
 
   **return**: `:ok`
   """
-  @doc functions: :client
   @spec set_frame_rate(pid(), frame_rate()) :: :ok
   def set_frame_rate(self_pid, frame_rate) do
     GenServer.call(self_pid, {:set_frame_rate, frame_rate})
@@ -562,7 +553,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec display_565(pid(), image_data()) :: :ok
   def display_565(self_pid, image_data) when is_binary(image_data) or is_list(image_data) do
     GenServer.call(self_pid, {:display_565, image_data})
@@ -587,7 +577,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec display_666(pid(), image_data()) :: :ok
   def display_666(self_pid, image_data) when is_binary(image_data) or is_list(image_data) do
     GenServer.call(self_pid, {:display_666, image_data})
@@ -612,7 +601,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec display(pid(), image_data(), color_format()) :: :ok
   def display(self_pid, image_data, source_color)
       when is_binary(image_data) and (source_color == :rgb888 or source_color == :bgr888) do
@@ -655,7 +643,6 @@ defmodule ILI9486 do
   - **display**: `%ILI9486{}`
   - **callback**: callback function. 3 arguments: `pin`, `timestamp`, `status`
   """
-  @doc functions: :client
   @spec set_touch_callback(pid(), touch_callback()) :: :ok
   def set_touch_callback(self_pid, callback) when is_function(callback, 3) do
     GenServer.call(self_pid, {:set_touch_callback, callback})
@@ -680,7 +667,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec command(pid(), byte(), Keyword.t()) :: :ok
   def command(self_pid, cmd, opts \\ []) when is_integer(cmd) do
     GenServer.call(self_pid, {:command, cmd, opts})
@@ -720,7 +706,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec data(pid(), iodata()) :: :ok
   def data(_self_pid, []), do: :ok
 
@@ -757,7 +742,6 @@ defmodule ILI9486 do
 
   **return**: `display`
   """
-  @doc functions: :client
   @spec send(pid(), integer() | iodata(), boolean()) :: :ok
   def send(self_pid, bytes, is_data)
       when (is_integer(bytes) or is_list(bytes)) and is_boolean(is_data) do
